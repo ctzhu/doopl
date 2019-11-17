@@ -264,6 +264,7 @@ class OplModel(object):
         try:
             if self._opl.isGenerated() is False:
                 self._opl.getSettings().setSkipWarnNeverUsedElements(True)
+                self._opl.getSettings().setWithNames(True)
                 if len(self._inputs) != 0:
                     s = MyDataSource(self, self._inputs)
                     source = IloOplDataSource(s)
@@ -602,4 +603,53 @@ class OplModel(object):
             con.execute(query, table)
             wildcards = None
         table = None
+
+    def get_slacks(self, name):
+        """
+        Returns the slacks for a map of constraints.
+        Works only if the "names" setting is kept on as in default.
+        :param name: name of a Map element
+        :return: a dict (name of element => value)
+        """
+        names = self._opl._getNames(name)
+        slacks = self._opl._getSlacks(name)
+        ret = {}
+        for i in range(0, slacks.getSize()):
+            ret[names.get_String(i)] = slacks.get_Num(i)
+        names.end()
+        slacks.end()
+        return ret
+
+    def get_reduced_costs(self, name):
+        """
+        Returns the slacks for a map of variables.
+        Works only if the "names" setting is kept on as in default.
+        :param name: name of a Map element
+        :return: a dict (name of element => value)
+        """
+        names = self._opl._getNames(name)
+        costs = self._opl._getReducedCosts(name)
+        ret = {}
+        for i in range(0, costs.getSize()):
+            ret[names.get_String(i)] = costs.get_Num(i)
+        names.end()
+        costs.end()
+        return ret
+
+    def get_duals(self, name):
+        """
+        Returns the duals for a map of variables.
+        Works only if the "names" setting is kept on as in default.
+        :param name: nme of a Map element
+        :return: a dict (name of element => value)
+        """
+        names = self._opl._getNames(name)
+        duals = self._opl._getDuals(name)
+        ret = {}
+        for i in range(0, duals.getSize()):
+            print(names.get_String(i))
+            ret[names.get_String(i)] = duals.get_Num(i)
+        names.end()
+        duals.end()
+        return ret
 

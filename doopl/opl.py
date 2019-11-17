@@ -126,6 +126,9 @@ class IloStringArray(_object):
     def getSize(self) -> "long":
         return _opl.IloStringArray_getSize(self)
 
+    def end(self) -> "void":
+        return _opl.IloStringArray_end(self)
+
     def get_String(self, index: 'long') -> "char const *":
         return _opl.IloStringArray_get_String(self, index)
     __swig_destroy__ = _opl.delete_IloStringArray
@@ -165,6 +168,12 @@ class IloNumArray(_object):
 
     def getSize(self) -> "long":
         return _opl.IloNumArray_getSize(self)
+
+    def end(self) -> "void":
+        return _opl.IloNumArray_end(self)
+
+    def get_Num(self, index: 'long') -> "double":
+        return _opl.IloNumArray_get_Num(self, index)
     __swig_destroy__ = _opl.delete_IloNumArray
     __del__ = lambda self: None
 IloNumArray_swigregister = _opl.IloNumArray_swigregister
@@ -182,6 +191,12 @@ class IloIntArray(_object):
 
     def getSize(self) -> "long":
         return _opl.IloIntArray_getSize(self)
+
+    def end(self) -> "void":
+        return _opl.IloIntArray_end(self)
+
+    def get_Int(self, index: 'long') -> "long":
+        return _opl.IloIntArray_get_Int(self, index)
     __swig_destroy__ = _opl.delete_IloIntArray
     __del__ = lambda self: None
 IloIntArray_swigregister = _opl.IloIntArray_swigregister
@@ -521,6 +536,18 @@ class IloOplModel(_object):
     def _compile(self, name: 'char const *') -> "void":
         return _opl.IloOplModel__compile(self, name)
 
+    def _getDuals(self, name: 'char const *') -> "IloNumArray":
+        return _opl.IloOplModel__getDuals(self, name)
+
+    def _getSlacks(self, name: 'char const *') -> "IloNumArray":
+        return _opl.IloOplModel__getSlacks(self, name)
+
+    def _getReducedCosts(self, name: 'char const *') -> "IloNumArray":
+        return _opl.IloOplModel__getReducedCosts(self, name)
+
+    def _getNames(self, name: 'char const *') -> "IloStringArray":
+        return _opl.IloOplModel__getNames(self, name)
+
     def _installEngineLog(self, path: 'char const *') -> "void":
         return _opl.IloOplModel__installEngineLog(self, path)
 
@@ -793,6 +820,9 @@ class IloOplSettings(_object):
 
     def setExportInternalData(self, path: 'char const *') -> "void":
         return _opl.IloOplSettings_setExportInternalData(self, path)
+
+    def setWithNames(self, arg2: 'IloBool') -> "void":
+        return _opl.IloOplSettings_setWithNames(self, arg2)
 
     def getErrorHandler(self) -> "IloOplErrorHandler":
         return _opl.IloOplSettings_getErrorHandler(self)
