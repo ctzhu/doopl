@@ -69,6 +69,9 @@ except __builtin__.Exception:
     weakref_proxy = lambda x: x
 
 
+
+IloException = _opl.IloException;
+
 class IloEnv(_object):
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, IloEnv, name, value)

@@ -13,3 +13,8 @@ except:
         import traceback
         traceback.print_exc()
         raise ImportError('Could not import OPL wrappers. Make sure than OPL bin directory is in the PATH')
+
+class OplRuntimeException(Exception):
+    '''The exception thrown by doopl methods when an error occurs
+    '''
+    pass

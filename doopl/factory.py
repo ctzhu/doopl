@@ -119,6 +119,10 @@ class MyDataSource(IloOplDataSourceWrapper):
             else:
                 if isinstance(value, pd.DataFrame):
                     bycolumn = [value[n].tolist() for n in value.columns]
+                    if schema.getSize() != len(bycolumn):
+                        tuple_names = [schema.getColumnName(i) for i in range(0, schema.getSize())]
+                        message = 'Column mistmatch, input name=%s, expected = %s, data = %s' % (name, tuple_names, [n for n in value.columns])
+                        raise OplRuntimeException(message)
                     fillTupleSet(set, bycolumn)
                     bycolumn = None
                 else:
@@ -290,9 +294,9 @@ class OplModel(object):
                 else:
                     self._opl.generate()
             return True
-        except Exception as e:
-            print(e)
-            return False
+        except Exception:
+            raise
+        return False
 
 
     def run(self):
