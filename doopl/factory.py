@@ -300,16 +300,19 @@ class OplModel(object):
         Use this method to generate and solve the problem.
         :return: True or False, depending on the solve engine status
         """
-        if self.__generate():
-            if self.__solve() is False:
-                return False
-            self._opl.postProcess()
-            settings = self._opl.getSettings()
-            if settings.hasProfiler():
-                settings.getProfiler().printReport()
-            return True
-        else:
-            raise ValueError("model was not generated")
+        try:
+            if self.__generate():
+                if self.__solve() is False:
+                    return False
+                self._opl.postProcess()
+                settings = self._opl.getSettings()
+                if settings.hasProfiler():
+                    settings.getProfiler().printReport()
+                return True
+            else:
+                raise ValueError("model was not generated")
+        finally:
+            self.flush_engine_logs()
 
     def run_seed(self, nb):
         """
@@ -559,6 +562,9 @@ class OplModel(object):
         """
         self.mute()
         self._opl._installEngineLog(name)
+
+    def flush_engine_logs(self):
+        self._opl._flushEngineLogs()
 
     @property
     def output_table_names(self):

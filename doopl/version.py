@@ -7,6 +7,6 @@
 # gendoc: ignore
 # This file is generated !
 opl_version_major = 12
-opl_version_minor = 8
+opl_version_minor = 9
 opl_version_micro = 0
-opl_version_string = '12.8.0'
+opl_version_string = '12.9.0'
