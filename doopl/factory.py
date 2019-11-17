@@ -196,6 +196,18 @@ class OplModel(object):
         :return: none
         """
         if value is not None:
+            modelDef = self._opl.getModelDefinition()
+            if modelDef.hasElementDefinition(name) is False:
+                message = "{0} does not exist in the .mod file\n".format(name)
+                raise(message)
+            definition = modelDef.getElementDefinition(name)
+            if definition.isExternalData() is False:
+                message = "{0} is not an external ... data\n".format(name)
+                raise Exception(message)
+            if definition.isTupleSet() is False:
+                message = "Only TupleSets are supported via doopl: {0} is not an external TupleSet.\n".format(name)
+                raise Exception(message)
+
             self._inputs[name] = value
         else:
             self._datfiles.append(name)
@@ -273,7 +285,10 @@ class OplModel(object):
                     for v in self._datfiles:
                         d = IloOplDataSource(self._opl.getEnv(), v)
                         self._opl.addDataSource(d)
-                self._opl.generate()
+                if self._opl.hasMain():
+                    self._opl.main()
+                else:
+                    self._opl.generate()
             return True
         except Exception as e:
             print(e)

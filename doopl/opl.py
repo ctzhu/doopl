@@ -311,6 +311,26 @@ class IloOplDataSource(_object):
 IloOplDataSource_swigregister = _opl.IloOplDataSource_swigregister
 IloOplDataSource_swigregister(IloOplDataSource)
 
+class IloOplModelDefinition(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, IloOplModelDefinition, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, IloOplModelDefinition, name)
+
+    def __init__(self, *args, **kwargs):
+        raise AttributeError("No constructor defined")
+    __repr__ = _swig_repr
+
+    def hasElementDefinition(self, name: 'char const *') -> "IloBool":
+        return _opl.IloOplModelDefinition_hasElementDefinition(self, name)
+
+    def getElementDefinition(self, name: 'char const *') -> "IloOplElementDefinition":
+        return _opl.IloOplModelDefinition_getElementDefinition(self, name)
+    __swig_destroy__ = _opl.delete_IloOplModelDefinition
+    __del__ = lambda self: None
+IloOplModelDefinition_swigregister = _opl.IloOplModelDefinition_swigregister
+IloOplModelDefinition_swigregister(IloOplModelDefinition)
+
 class IloTupleSet(_object):
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, IloTupleSet, name, value)
@@ -466,6 +486,9 @@ class IloOplModel(_object):
         raise AttributeError("No constructor defined")
     __repr__ = _swig_repr
 
+    def main(self) -> "long":
+        return _opl.IloOplModel_main(self)
+
     def getEnv(self) -> "IloEnv":
         return _opl.IloOplModel_getEnv(self)
 
@@ -525,9 +548,6 @@ class IloOplModel(_object):
 
     def runSeed(self, n: 'long') -> "void":
         return _opl.IloOplModel_runSeed(self, n)
-
-    def _checkDefinition(self, name: 'char const *') -> "IloBool":
-        return _opl.IloOplModel__checkDefinition(self, name)
     if _newclass:
         _makeModelSourceFromString = staticmethod(_opl.IloOplModel__makeModelSourceFromString)
     else:
@@ -566,8 +586,8 @@ class IloOplModel(_object):
     def unmute(self) -> "void":
         return _opl.IloOplModel_unmute(self)
 
-    def hasMain(self) -> "IloBool":
-        return _opl.IloOplModel_hasMain(self)
+    def hasMain(self, *args) -> "IloBool":
+        return _opl.IloOplModel_hasMain(self, *args)
     __swig_destroy__ = _opl.delete_IloOplModel
     __del__ = lambda self: None
 IloOplModel_swigregister = _opl.IloOplModel_swigregister
@@ -651,6 +671,12 @@ class IloOplElementDefinition(_object):
 
     def getName(self) -> "char const *":
         return _opl.IloOplElementDefinition_getName(self)
+
+    def isExternalData(self) -> "IloBool":
+        return _opl.IloOplElementDefinition_isExternalData(self)
+
+    def isTupleSet(self) -> "IloBool":
+        return _opl.IloOplElementDefinition_isTupleSet(self)
     __swig_destroy__ = _opl.delete_IloOplElementDefinition
     __del__ = lambda self: None
 IloOplElementDefinition_swigregister = _opl.IloOplElementDefinition_swigregister
