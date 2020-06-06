@@ -93,7 +93,7 @@ Here is a small example to start working with the API::
 from doopl.version import opl_version_major, opl_version_minor, opl_version_micro
 
 # The line that follows is updated at build time, please do not edit !
-__version__ = '12.8.0.16' # updated at build time
+__version__ = '12.10.0.26' # updated at build time
 __version_info__ = __version__.split('.')
 
 __opl_version__ = (opl_version_major, opl_version_minor, opl_version_micro)

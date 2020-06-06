@@ -406,9 +406,6 @@ class IloTupleSchema(_object):
     def getName(self) -> "char const *":
         return _opl.IloTupleSchema_getName(self)
 
-    def hasKey(self) -> "IloBool":
-        return _opl.IloTupleSchema_hasKey(self)
-
     def _getColumnTypes(self) -> "IloIntArray":
         return _opl.IloTupleSchema__getColumnTypes(self)
 
@@ -420,6 +417,9 @@ class IloTupleSchema(_object):
 
     def _isTuple(self, i: 'long') -> "IloBool":
         return _opl.IloTupleSchema__isTuple(self, i)
+
+    def hasKey(self) -> "IloBool":
+        return _opl.IloTupleSchema_hasKey(self)
     __swig_destroy__ = _opl.delete_IloTupleSchema
     __del__ = lambda self: None
 IloTupleSchema_swigregister = _opl.IloTupleSchema_swigregister

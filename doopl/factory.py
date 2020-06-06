@@ -6,27 +6,25 @@
 
 from doopl.opl import *
 import pandas as pd
-from six import iteritems
+from six import iteritems, PY2
 from collections import OrderedDict
 
 from contextlib import contextmanager
-import sys
 
 OPL_INTEGER = 1
 OPL_FLOAT = 2
 OPL_STRING = 3
 
 
-
-
 @contextmanager
 def create_opl_model(model, data=None):
     """
     Use this method to create an OplModel from a .mod file.
-    This OplModel can be linked to 0 to n .dat files.
+    This OplModel can be linked to one or many .dat files.
     Use the OplModel methods to set inputs via list of tuples, or pandas dataframes.
     Use the OplModel to generate and solve the problem, get the solution...
-    :param mode: .mod file to read. Can be a file path or an IO object with a read method
+
+    :param model: .mod file to read. Can be a file path or an IO object with a read method
     :param data: can be nothing, or the name of a .dat file or a list of .dat files
     :return: an OplModel instance
     """
@@ -65,69 +63,75 @@ class MyDataSource(IloOplDataSourceWrapper):
         self._opl = opl
         self._inputs = inputs
 
+    # noinspection PyProtectedMember
     def read(self):
         dh = self.getDataHandler()
         env = self._opl.getEnv()
         getFields = self._opl._getFields
 
         for (name, value) in iteritems(self._inputs):
-            set = dh._prepareSet(name)
-            schema = set.getSchema()
+            tuple_set = dh._prepareSet(name)
+            schema = tuple_set.getSchema()
 
             fields, fieldsSize = getFields(schema)
 
             def addCell(cells, index, f, v):
                 if f == OPL_STRING:
+                    # noinspection PyUnresolvedReferences
                     if isinstance(v, str):
                         cells.setStringValue(index, v)
                     elif type(v) in {int, float}:
                         cells.setStringValue(index, str(v))
-                    elif sys.version_info[0] == 2 and isinstance(v, unicode):
+                    elif PY2 and isinstance(v, unicode):
                         cells.setStringValue(index, str(v).encode("utf-8"))
                     else:
                         cells.setStringValue(index, str(v))
                 else:
                     cells.setNumValue(index, float(v))
 
-            def fillTupleSet(set, values):
+            # noinspection PyUnresolvedReferences
+            def fill_tuple_set(tupleset, values):
                 size = len(bycolumn[0])
-                for i, type in enumerate(fields):
-                    col = bycolumn[i]
-                    if type == OPL_INTEGER:
-                        set.setIntColumnValues(i, col, size)
-                    elif type == OPL_FLOAT:
-                        set.setNumColumnValues(i, col, size)
+                for c, ctype in enumerate(fields):
+                    col = bycolumn[c]
+                    if ctype == OPL_INTEGER:
+                        tupleset.setIntColumnValues(c, col, size)
+                    elif ctype == OPL_FLOAT:
+                        tupleset.setNumColumnValues(c, col, size)
                     else:
                         values = []
-                        for v in bycolumn[i]:
+                        for v in bycolumn[c]:
                             if isinstance(v, str):
                                 values.append(v)
                             elif type(v) in {int, float}:
                                 values.append(str(v))
-                            elif sys.version_info[0] == 2 and isinstance(v, unicode):
+
+                            elif PY2 and isinstance(v, unicode):
                                 values.append(str(v).encode("utf-8"))
                             else:
                                 values.append(str(v))
-                        set.setStringColumnValues(i, values, size)
+                        tupleset.setStringColumnValues(c, values, size)
                         values = None
-                set.fillTupleHash()
+                tupleset.fillTupleHash()
 
             if isinstance(value, list):
                 bycolumn = [list(i) for i in zip(*(col for col in value))]
-                fillTupleSet(set, bycolumn)
+                fill_tuple_set(tuple_set, bycolumn)
                 bycolumn = None
             else:
                 if isinstance(value, pd.DataFrame):
                     bycolumn = [value[n].tolist() for n in value.columns]
-                    if schema.getSize() != len(bycolumn):
+                    # if schema.getSize() != len(bycolumn):
+                    if len(fields) != len(bycolumn):
                         tuple_names = [schema.getColumnName(i) for i in range(0, schema.getSize())]
-                        message = 'Column mistmatch, input name=%s, expected = %s, data = %s' % (name, tuple_names, [n for n in value.columns])
+                        message = 'Column mistmatch, input name=%s, expected = %s, data = %s' % (
+                        name, tuple_names, [n for n in value.columns])
                         raise OplRuntimeException(message)
-                    fillTupleSet(set, bycolumn)
+                    fill_tuple_set(tuple_set, bycolumn)
                     bycolumn = None
                 else:
                     hasKey = schema.hasKey()
-                    commitMethod = set.commit if hasKey is True else set.commit2HashTable
+                    commitMethod = tuple_set.commit if hasKey else tuple_set.commit2HashTable
                     cells = IloTupleCellArray(env, fieldsSize)
                     for v in value:
                         for (i, t) in enumerate(v):
@@ -135,14 +139,17 @@ class MyDataSource(IloOplDataSourceWrapper):
                         commitMethod(cells, False)
 
                     if hasKey is False:
-                        set.fillColumns()
+                        tuple_set.fillColumns()
                     cells.end()
 
+
 class OplModel(object):
+    """ This class represents an OPL Model, \
+    defined by a  `.mod` file, attached to `.dat` files,
+    python tuple lists or python dataframes.
     """
-    This class represents an OPL Model, that is a .mod file which is linked to .dat files, python tuple lists or python dataframes.
-    """
-    def __init__(self, env, opl, filename = None):
+
+    def __init__(self, env, opl, filename=None):
         self._env = env
         self._opl = opl
         self._inputs = OrderedDict()
@@ -163,19 +170,18 @@ class OplModel(object):
         return f, len(f)
 
     def __str__(self):
-        repr = "oplmodel:\n"
-        if self._filename is not None:
-            repr += ("     mod file: {0}\n".format(self._filename))
-        else:
-            repr += ("     mod file: \n")
-        repr += ("     {0:d} .dat files\n").format(len(self._datfiles))
-        for d in self._datfiles:
-            repr += ("         {0} input data file\n".format(d))
-        repr += ("     {0:d} python structures\n").format(len(self._inputs))
-        for k,v in iteritems(self._inputs):
-            repr += ("         {0} custom input (pandas, sql, tuple lists)\n".format(k))
-        return repr
+        return self.to_string()
 
+    def to_string(self):
+        opls = "oplmodel:\n"
+        opls += "     mod file: {0}\n".format(self._filename or '')
+        opls += "     {0:d} .dat files\n".format(len(self._datfiles))
+        for d in self._datfiles:
+            opls += ("         {0} input data file\n".format(d))
+        opls += "     {0:d} python structures\n".format(len(self._inputs))
+        for k, v in iteritems(self._inputs):
+            opls += ("         {0} custom input (pandas, sql, tuple lists)\n".format(k))
+        return opls
 
     def __enter__(self):
         return self
@@ -190,32 +196,31 @@ class OplModel(object):
         self._cplex_quality = None
         self._fieldDict = None
         self._env.end()
+        # ensure empty
+        self._env = None
 
-
-    def set_input(self, name, value = None):
-        """
-        Add an input IloTupleSet to OPL problem
+    def set_input(self, name, value=None):
+        """  Add an input IloTupleSet to OPL problem
         :param name: name of the input IloTupleSet to initialize or a .dat filename
         :param value: a list of tuples, a pandas dataframe, an iterable of iterable or None if a .dat filename is used
-        :return: none
+
         """
         if value is not None:
             modelDef = self._opl.getModelDefinition()
             if modelDef.hasElementDefinition(name) is False:
                 message = "{0} does not exist in the .mod file\n".format(name)
-                raise(message)
+                raise OplRuntimeException(message)
             definition = modelDef.getElementDefinition(name)
             if definition.isExternalData() is False:
                 message = "{0} is not an external ... data\n".format(name)
-                raise Exception(message)
+                raise OplRuntimeException(message)
             if definition.isTupleSet() is False:
                 message = "Only TupleSets are supported via doopl: {0} is not an external TupleSet.\n".format(name)
-                raise Exception(message)
+                raise OplRuntimeException(message)
 
             self._inputs[name] = value
         else:
             self._datfiles.append(name)
-
 
     def __solve(self):
         if self._opl.isUsingCP():
@@ -243,7 +248,6 @@ class OplModel(object):
         :param name: name of the dexpr
         :return: a floating point value
         """
-        elt = None
         try:
             elt = self._opl.getElement(name)
         except:
@@ -262,9 +266,10 @@ class OplModel(object):
         self._opl.applyOpsSettings(name)
 
     def setExportInternalData(self, name):
-        self._opl.getSettings().setExportInternalData(name);
+        self._opl.getSettings().setExportInternalData(name)
+
     def setExportExternalData(self, name):
-        self._opl.getSettings().setExportExternalData(name);
+        self._opl.getSettings().setExportExternalData(name)
 
     def use_profiler(self):
         """
@@ -294,10 +299,17 @@ class OplModel(object):
                 else:
                     self._opl.generate()
             return True
+
         except Exception:
             raise
-        return False
-
+        
+    def generate(self):
+        """Generates the problem and uses optimization engine to extract it.
+        """
+        try:
+            return self.__generate()
+        finally:
+            self.flush_engine_logs()
 
     def run(self):
         """
@@ -366,16 +378,16 @@ class OplModel(object):
         if self._cplex_quality is not None:
             return self._cplex_quality
         if self._opl.isUsingCP():
-            raise ValueError("Cannot CPLEX specific method use with CPO");
+            raise ValueError("Cannot CPLEX specific method use with CPO")
         ret = OrderedDict()
         cplex = self._opl.getCplex()
         size = cplex._getQualityEnumSize()
         p_inf = float("inf")
         for i in range(size):
-            if i != 10 and i != 11: # bug in the code/build or in CPLEX?
+            if i != 10 and i != 11:  # bug in the code/build or in CPLEX?
                 name = cplex._getQualityEnumName(i)
                 value = cplex._getQuality(i)
-                if (value != p_inf):
+                if value != p_inf:
                     ret[name] = value
         self._cplex_quality = ret
         return ret
@@ -396,7 +408,7 @@ class OplModel(object):
         if self._cplex_stats is not None:
             return self._cplex_stats
         if self._opl.isUsingCP():
-            raise ValueError("Cannot CPLEX specific method use with CPO");
+            raise ValueError("Cannot CPLEX specific method use with CPO")
         ret = OrderedDict()
         cplex = self._opl.getCplex()
         ret["Niterations"] = cplex.getNiterations()
@@ -437,38 +449,35 @@ class OplModel(object):
         self._cplex_stats = ret
         return ret
 
-    def get_table(self, name, as_pandas = True):
+    def get_table(self, name, as_pandas=True):
         """
         Retrieves an IloTupleSet as a pandas dataframe
         :param name: name of the IloTupleSet
-        :return: a pandas dataframe
+        :param as_pandas: if True, returns the tupleset as a pandas dataframe, else
+            returns a list.
+
+        :return: a pandas dataframe, or a list.
         """
         if self._is_tuple_set(name):
             elt = self._opl.getElement(name)
-            return self.__getTupleSet(elt.asTupleSet(), as_pandas)
-        raise ValueError("{0} is not a TupleSet".format(name))
+            return self._convert_tupleset(elt.asTupleSet(), as_pandas)
+        else:
+            raise ValueError("Expecting tupleset, {0!r} was passed".format(name))
 
-
-    def __getTupleSet(self, set, as_pandas = True):
-        tset = set
-        schema = tset.getSchema()
-        fields, size = self._getFields(schema)#._getColumnTypes()#_get_schema_types(schema)
+    def _convert_tupleset(self, tupleset, as_pandas=True):
+        schema = tupleset.getSchema()
+        fields, size = self._getFields(schema)  # ._getColumnTypes()#_get_schema_types(schema)
 
         columns = []
-        for i,type in enumerate(fields):
-            if type == OPL_INTEGER:
-                columns.append(tset.getIntColumnValues(i))
-            elif type == OPL_FLOAT:
-                columns.append(tset.getNumColumnValues(i))
+        for i, ftype in enumerate(fields):
+            if ftype == OPL_INTEGER:
+                columns.append(tupleset.getIntColumnValues(i))
+            elif ftype == OPL_FLOAT:
+                columns.append(tupleset.getNumColumnValues(i))
             else:
-                columns.append(tset.getSymbolColumnValues(i))
-
+                columns.append(tupleset.getSymbolColumnValues(i))
 
         rep = [tuple(i) for i in zip(*(c for c in columns))]
-        columns = None
-
-        if as_pandas is False:
-            return rep
 
         def get_names(schem):
             names = list()
@@ -481,15 +490,17 @@ class OplModel(object):
                         sub = schema._getTupleColumn(i)
                         subNames = get_names(sub)
                         subName = sub.getName()
-                        for i in subNames:
-                            names.append(subName+"."+i)
+                        for sn in subNames:
+                            names.append(subName + "." + sn)
                     else:
                         names.append(schem.getColumnName(i))
             return names
 
-        names = get_names(schema)
-
-        return pd.DataFrame(rep, columns=names)
+        if as_pandas:
+            names = get_names(schema)
+            return pd.DataFrame(rep, columns=names)
+        else:
+            return rep
 
     def export_model(self, name):
         """
@@ -499,14 +510,15 @@ class OplModel(object):
         """
         extension = name[-3:]
         if extension not in {"sav", ".lp", "cpo", "mps"}:
-            raise("can't export: give a correct file engine extension")
+            raise ValueError("Invalid export extension: {0}, expecting  lp|save|cpo|mps"
+                             .format(extension))
         if self.__generate():
             if self._opl.isUsingCP():
                 self._opl.getCP().exportModel(name)
             else:
                 self._opl.getCplex().exportModel(name)
         else:
-            raise("model was not generated")
+            raise OplRuntimeException("model was not generated")
 
     def mute(self):
         """
@@ -535,7 +547,6 @@ class OplModel(object):
         :return:
         """
         self._opl.unconvertAllIntVars()
-
 
     @property
     def report(self):
@@ -588,25 +599,21 @@ class OplModel(object):
                 rep.append(elt.getName())
         return rep
 
-    def _is_tuple_set(self,name):
-        elt = None
+    def _is_tuple_set(self, name):
         try:
             elt = self._opl.getElement(name)
+            return  elt.isDiscreteDataCollection() and \
+                    elt.asDiscreteDataCollection().isTupleSet()
+
         except:
             raise ValueError("Table {0} does not exist in the OPL model.".format(name))
-        if elt.isDiscreteDataCollection():
-            if elt.isDiscreteDataCollection():
-                if elt.asDiscreteDataCollection().isTupleSet():
-                    return True
-        return False
 
-    def _is_kpi(self,name):
+
+    def _is_kpi(self, name):
         elt = self._opl.getElement(name)
-        if elt.isDecisionExpression():
-            return True
-        return False
+        return elt.isDecisionExpression()
 
-    def _to_sql(self,con, name):
+    def _to_sql(self, con, name):
         """
         Unsupported method to publish table in a database.
         The table must exist in the database, and will be cleared before the results are published.
@@ -621,7 +628,7 @@ class OplModel(object):
             query = "DELETE FROM {0:s}".format(name)
             con.execute(query)
 
-        if (len(table)):
+        if len(table):
             size = len(table[0])
             wildcards = ','.join(['?'] * size)
             query = 'INSERT INTO {0:s} VALUES ({1:s})'.format(name, wildcards)
@@ -677,4 +684,3 @@ class OplModel(object):
         names.end()
         duals.end()
         return ret
-
